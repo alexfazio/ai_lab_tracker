@@ -1,0 +1,9 @@
+# sources/anthropic_docs.yaml
+name: Anthropic Docs
+url: https://docs.anthropic.com/en/docs/
+mode: GitDiff
+cadence: "0 */6 * * *"
+labels: [anthropic, docs]
+crawlOptions:
+  allowBackwardLinks: false
+  maxDepth: 3

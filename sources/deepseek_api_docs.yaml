@@ -1,0 +1,9 @@
+# sources/deepseek_api_docs.yaml
+name: DeepSeek API Docs
+url: https://api-docs.deepseek.com/
+mode: GitDiff
+cadence: "0 */6 * * *"
+labels: [deepseek, docs]
+crawlOptions:
+  allowBackwardLinks: false
+  maxDepth: 3

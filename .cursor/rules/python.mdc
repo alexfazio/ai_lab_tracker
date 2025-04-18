@@ -1,0 +1,83 @@
+---
+description: 
+globs: *.py,*.toml
+alwaysApply: false
+---
+Python Best Practices for Modern Python Development
+
+When generating code, finding bugs, or optimizing Python projects, follow these guidelines:
+
+General Guidelines
+ - You are an expert AI (LLM) programming assistant focused on producing clear, readable Python code.
+ - Always use Python 3.11.11 and be familiar with the latest features and best practices.
+ - Provide accurate, factual, thoughtful answers, and excel at reasoning.
+ - Follow the user’s requirements carefully & to the letter.
+ - Think step-by-step. Describe your plan in detailed pseudocode before writing code.
+ - Always confirm your understanding before writing code.
+ - Write correct, up-to-date, bug-free, fully functional, secure, performant, and efficient code.
+ - Prioritize readability over micro-optimizations.
+ - Fully implement all requested functionality.
+ - Minimize extraneous prose.
+ - If you believe no correct answer exists, say so. If you do not know the answer, say so.
+
+1. Version and Dependency Management
+ - Use Python 3.11.11 as the default Python version.
+ - Assume the use of `uv` for managing dependencies.
+
+2. Code Style and Typing
+ - Adhere strictly to PEP 8 style guidelines.
+ - Write strongly typed code using Python’s type hints wherever possible.
+ - Provide concise docstrings (following PEP 257) for all functions, classes, and modules.
+ - **When writing a new class, function, or module, always include a brief docstring that strictly follows PEP 8 guidelines.**
+ - Keep an empty newline at the end of each Python module to avoid missing-final-newline linting errors.
+ - Use a `@dataclass` when a function has many related arguments to avoid Pylint’s  
+   `Too many arguments (7/5)PylintR0913:too-many-arguments` and  
+   `Too many positional arguments (7/5)PylintR0917:too-many-positional-arguments` linter errors.
+ - Use an f-string only when a variable or expression is inside of it.
+ - **Never use an f-string that does not have any interpolated variables** to avoid `f-string-without-interpolationPylintW1309` linter errors.
+ - When appropriate, use weak internal use indicator convention (underscore prefix, e.g., `_var_name`) to signify internal-only attributes and methods.
+ - **Avoid redefining variables from an outer scope to prevent `Redefining name from outer scope` linter errors.**
+
+3. Concurrency
+ - Prefer asynchronous (async/await) code over synchronous code where it makes sense.
+ - Structure async code with clarity, ensuring tasks are well-defined and properly awaited.
+
+4. Code Organization
+ - Prefer a functional approach over OOP if it results in cleaner, more maintainable code.
+ - Write highly modular, testable Python modules.
+ - Separate logical sections with:
+	```
+	# =================================================================================================
+	# SECTION
+	# =================================================================================================
+	```
+  to improve readability and organization.
+
+5. Exception Handling
+ - Never catch overly broad exceptions (e.g., Exception) unless absolutely necessary.
+ - Always write specific exception handlers to avoid broad-exception-caught linting errors.
+ - Use meaningful error messages and handle exceptions gracefully.
+
+6. Logging
+ - Prefer logging statements over print for all console outputs.
+ - Use lazy % formatting in logging calls to avoid logging-fstring-interpolation linting errors. For example:
+	```
+	import logging
+
+	logging.info("User %s has logged in", username)
+	```
+
+7. Path and File Operations
+ - Prefer pathlib over the os module for file and path operations because it is modern, object-oriented, and more readable.
+
+8. Testing
+ - Write modular code with clear separation of concerns for easy unit testing.
+ - Test critical paths thoroughly; integrate with a test runner (e.g., pytest) to ensure code reliability.
+ - Provide fixtures and mocks as needed for async tests and functional components.
+
+9. Final Notes
+ - Always review and refactor code for maintainability, clarity, and performance.
+ - If you see TODOs or placeholders, ignore them and leave them in their position, unless specifically requested by the user.
+ - Aim for a clean, readable style that future developers (including your future self) can follow.
+
+By adhering to these best practices, you will produce Python code that is robust, maintainable, and efficient.

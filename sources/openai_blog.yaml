@@ -1,1 +1,6 @@
-
+# sources/openai_blog.yaml
+name: OpenAI Blog
+url: https://openai.com/blog
+mode: GitDiff
+cadence: "*/30 * * * *"
+labels: [openai, blog]

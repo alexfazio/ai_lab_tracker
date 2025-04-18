@@ -2,5 +2,6 @@ httpx[http2]>=0.27
 python-telegram-bot>=21
 pydantic>=2
 aiofiles>=23
+firecrawl-py>=2.0.2
 
 [dev]

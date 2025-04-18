@@ -1,0 +1,278 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Rich Console Styling Guide
+
+## Overview
+This guide provides a standardized approach to using the Rich library for colored console output in Python projects, following the patterns established in the Claude Engineer project.
+
+## Core Components
+
+### 1. Console Initialization
+```python
+from rich.console import Console
+
+console = Console()
+```
+
+### 2. Color Scheme
+Use the following color scheme consistently:
+
+- **Red** (`[red]`): Errors, critical warnings, and failure states
+- **Green** (`[green]`): Success messages, positive indicators, and completed actions
+- **Yellow** (`[yellow]`): Warnings, medium-priority messages, and in-progress states
+- **Cyan** (`[cyan]`): Information, tool usage, and general output
+- **Blue** (`[blue]`): User input prompts and interactive elements
+- **Purple** (`[purple]`): Assistant responses and AI-generated content
+- **Bold** (`[bold]`): Emphasize important messages (can be combined with colors)
+
+### 3. Message Types and Styling
+
+#### Error Messages
+```python
+# With variable interpolation
+error_message = "Failed to connect to database"
+console.print(f"[bold red]Error:[/bold red] {error_message}")
+
+# Without variable interpolation
+console.print("[red]Operation failed. Please try again.[/red]")
+
+# With logging (using lazy formatting)
+import logging
+logging.error("Failed to connect to database: %s", error_message)
+```
+
+#### Success Messages
+```python
+# With variable interpolation
+action = "installation"
+console.print(f"[bold green]Success![/bold green] {action} completed.")
+
+# Without variable interpolation
+console.print("[green]Operation completed successfully.[/green]")
+
+# With logging
+logging.info("Operation completed successfully")
+```
+
+#### Warning Messages
+```python
+# With variable interpolation
+remaining_tokens = 1000
+console.print(f"[yellow]Warning:[/yellow] Only {remaining_tokens:,} tokens remaining")
+
+# Without variable interpolation
+console.print("[bold yellow]Attention:[/bold yellow] Please review the changes")
+
+# With logging
+logging.warning("Low token count: %d", remaining_tokens)
+```
+
+#### Information Messages
+```python
+# With variable interpolation
+input_data = "user input"
+console.print(f"[cyan]📥 Input:[/cyan] {input_data}")
+
+# Without variable interpolation
+console.print("[cyan]Processing request...[/cyan]")
+
+# With logging
+logging.info("Processing request")
+```
+
+#### Tool Usage
+```python
+# With variable interpolation
+tool_name = "code_editor"
+description = "Edits code files"
+console.print(f"[bold green]NEW[/bold green] 🔧 [cyan]{tool_name}[/cyan]: {description}")
+
+# Without variable interpolation
+console.print("[bold cyan]Available tools:[/bold cyan]")
+
+# With logging
+logging.info("New tool loaded: %s", tool_name)
+```
+
+#### Progress Indicators
+```python
+from rich.live import Live
+from rich.spinner import Spinner
+
+# Without variable interpolation
+console.print("[cyan]Processing...[/cyan]")
+
+# With Live display
+with Live(
+    Spinner('dots', text='Thinking...', style="cyan"),
+    refresh_per_second=10,
+    transient=True
+):
+    # Operation here
+    pass
+```
+
+### 4. Panels and Structured Output
+
+#### Basic Panel
+```python
+from rich.panel import Panel
+
+# With variable interpolation
+content = "Panel content"
+title = "Panel Title"
+console.print(
+    Panel(
+        content,
+        title=title,
+        title_align="left",
+        border_style="cyan",
+        padding=(1, 2)
+    )
+)
+
+# Without variable interpolation
+console.print(
+    Panel(
+        "Static content",
+        title="Static Title",
+        style="cyan"
+    )
+)
+```
+
+#### Status Panels
+```python
+# Success Panel with variable
+status = "completed"
+console.print(Panel(f"Operation {status} successfully", style="bold green"))
+
+# Warning Panel without variable
+console.print(Panel("Warning message", style="bold yellow"))
+
+# Error Panel with variable
+error_msg = "Connection failed"
+console.print(Panel(error_msg, title="Error", style="bold red"))
+```
+
+### 5. Progress Bars and Visual Indicators
+```python
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+
+# With variable interpolation
+total_items = 100
+with Progress(
+    SpinnerColumn(),
+    TextColumn("[progress.description]{task.description}"),
+    BarColumn(),
+    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+    console=console
+) as progress:
+    task = progress.add_task("[cyan]Processing...", total=total_items)
+    # Update progress
+    progress.update(task, advance=1)
+```
+
+### 6. Tables
+```python
+from rich.table import Table
+from rich.box import ROUNDED
+
+# With variable interpolation
+data = [("Item 1", 100), ("Item 2", 200)]
+table = Table(box=ROUNDED)
+table.add_column("Name", style="cyan")
+table.add_column("Value", style="magenta")
+
+for name, value in data:
+    table.add_row(name, str(value))
+
+console.print(table)
+
+# With logging
+logging.debug("Table created with %d rows", len(data))
+```
+
+## Best Practices
+
+1. **PEP 8 Compliance**:
+   - Use 4 spaces for indentation
+   - Limit lines to 79 characters
+   - Use blank lines to separate functions and classes
+   - Use descriptive variable names in snake_case
+
+2. **F-string Usage**:
+   - Only use f-strings when interpolating variables
+   - Use regular strings for static content
+   - Format numbers with commas: `f"{number:,}"`
+
+3. **Logging Best Practices**:
+   - Use lazy formatting with `%s`, `%d`, etc.
+   - Include appropriate log levels
+   - Add context to log messages
+   - Use structured logging when possible
+
+4. **Color Usage**:
+   - Be consistent with color choices
+   - Use bold for emphasis
+   - Ensure sufficient contrast
+   - Consider color-blind users
+
+## Example Implementation
+
+```python
+import logging
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress
+
+# Initialize components
+console = Console()
+logging.basicConfig(level=logging.INFO)
+
+def process_data(data_items):
+    """Process a list of data items with progress tracking."""
+    total_items = len(data_items)
+    
+    # Log start of operation
+    logging.info("Starting data processing for %d items", total_items)
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Processing...", total=total_items)
+        
+        for item in data_items:
+            try:
+                # Process item
+                result = process_single_item(item)
+                
+                # Update progress
+                progress.update(task, advance=1)
+                
+                # Log success
+                logging.debug("Processed item: %s", item)
+                
+            except Exception as e:
+                # Log error with context
+                logging.error("Failed to process item %s: %s", item, str(e))
+                console.print(f"[bold red]Error:[/bold red] {str(e)}")
+    
+    # Show completion message
+    console.print("[bold green]Processing completed successfully![/bold green]")
+```
+
+## Notes
+
+- All code examples follow PEP 8 style guidelines
+- F-strings are used only when variables are interpolated
+- Logging uses lazy formatting with `%s` placeholders
+- Color usage is consistent and follows accessibility guidelines
+- Examples include both simple and complex use cases

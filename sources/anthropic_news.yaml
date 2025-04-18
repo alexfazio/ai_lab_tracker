@@ -1,0 +1,6 @@
+# sources/anthropic_news.yaml
+name: Anthropic News
+url: https://www.anthropic.com/news
+mode: GitDiff
+cadence: "*/10 * * * *"
+labels: [anthropic, news]

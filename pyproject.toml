@@ -19,6 +19,8 @@ dependencies = [
   "python-telegram-bot >=21",
   "pydantic >=2",
   "aiofiles >=23",
+  "PyYAML >=5.4",
+  "firecrawl-py>=2.0.2",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,9 @@
+# sources/google_gemini_api_docs.yaml
+name: Google Gemini API Docs
+url: https://ai.google.dev/gemini-api/docs
+mode: GitDiff
+cadence: "0 */6 * * *"
+labels: [google, gemini, docs]
+crawlOptions:
+  allowBackwardLinks: false
+  maxDepth: 3
