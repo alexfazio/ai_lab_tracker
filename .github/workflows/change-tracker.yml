@@ -18,8 +18,11 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('requirements.txt') }}
       - name: Install deps
         run: |
-          # Download UV CLI binary
-          curl -Ls https://github.com/astral-sh/uv/releases/latest/download/uv-$(uname -s | tr A-Z a-z)-x86_64 -o uv
+          # Download UV CLI binary for correct OS/architecture
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then ARCH="x86_64"; elif [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi
+          curl -Ls "https://github.com/astral-sh/uv/releases/latest/download/uv-${OS}-${ARCH}" -o uv
           chmod +x uv && sudo mv uv /usr/local/bin
           # Install Python dependencies via UV
           uv pip install --quiet -r requirements.txt
