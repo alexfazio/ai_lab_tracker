@@ -61,10 +61,11 @@ async def run_once() -> None:
             if source.labels and 'docs' in source.labels:
                 # Only attempt crawl for the selected docs source
                 if doc_sources and source == doc_sources[doc_idx]:
-                    now = asyncio.get_event_loop().time()
-                    # Skip if last_run was within past 60s
-                    if now - last_run < 60:
-                        logging.info("Skipping docs crawl for %s; last run was %.0f seconds ago", source.url, now - last_run)
+                    now = time.time()
+                    # Calculate elapsed time; only skip if within past 60s (ignore negative values)
+                    elapsed = now - last_run
+                    if elapsed >= 0 and elapsed < 60:
+                        logging.info("Skipping docs crawl for %s; last run was %.0f seconds ago", source.url, elapsed)
                         continue
                     # Perform crawl and update last_run in state
                     results = await crawl_and_fetch(
