@@ -1,17 +1,27 @@
-import os
-import logging
-import hashlib
-import time
-from .firecrawl_adapter import fetch, crawl_and_fetch
-from .source_loader import load_sources
-from .notifier import TelegramNotifier
-from .models import SourceConfig, FirecrawlResult
-import pathlib
-import json
+"""AI Lab Tracker: periodically polls configured sources, crawls docs, and notifies changes."""
+
+# Standard library imports
 import asyncio
+import hashlib
+import json
+import logging
+import os
+import pathlib
+import time
+from datetime import datetime
+from typing import Optional
+
+# Local application imports
+from .firecrawl_adapter import crawl_and_fetch, fetch
+from .models import FirecrawlResult, SourceConfig, ChangeTracking, Diff
+from .notifier import TelegramNotifier
+from .source_loader import load_sources
 
 async def run_once() -> None:
     """Run one iteration of the tracker: fetch all sources and notify changes."""
+    # =================================================================================================
+    # Global throttle
+    # =================================================================================================
     logging.basicConfig(level=logging.INFO)
     # Global throttle: skip if last run was within 60 seconds
     state_dir = pathlib.Path('.state')
@@ -27,11 +37,16 @@ async def run_once() -> None:
     # record run timestamp
     run_state_file.write_text(json.dumps({'last_run': now}))
     logging.info("Starting run_once")
+    # =================================================================================================
     # Initialize notifier
+    # =================================================================================================
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_ids = os.getenv("TELEGRAM_CHAT_IDS", "")
     notifier = TelegramNotifier(bot_token, chat_ids)
 
+    # =================================================================================================
+    # Load sources and initialize doc rotation
+    # =================================================================================================
     # Load all source configs
     sources = load_sources()
     # Identify doc sources for rotation
@@ -54,6 +69,9 @@ async def run_once() -> None:
     else:
         last_run = 0.0
         next_idx = 0
+    # =================================================================================================
+    # Fetch loop and notification
+    # =================================================================================================
     notified_hashes = set()
     for source in sources:
         try:
@@ -61,9 +79,9 @@ async def run_once() -> None:
             if source.labels and 'docs' in source.labels:
                 # Only attempt crawl for the selected docs source
                 if doc_sources and source == doc_sources[doc_idx]:
-                    now = time.time()
+                    docs_now = time.time()
                     # Calculate elapsed time; only skip if within past 60s (ignore negative values)
-                    elapsed = now - last_run
+                    elapsed = docs_now - last_run
                     if elapsed >= 0 and elapsed < 60:
                         logging.info("Skipping docs crawl for %s; last run was %.0f seconds ago", source.url, elapsed)
                         continue
@@ -76,7 +94,7 @@ async def run_once() -> None:
                     # Persist updated cursor and last_run
                     state_dir = pathlib.Path('.state')
                     cursor_file = state_dir / 'docs_cursor.json'
-                    cursor_file.write_text(json.dumps({'cursor': next_idx, 'last_run': now}))
+                    cursor_file.write_text(json.dumps({'cursor': next_idx, 'last_run': docs_now}))
                 else:
                     # Skip other docs sources this run
                     continue
@@ -85,7 +103,7 @@ async def run_once() -> None:
                 single = await fetch(source.url, source.mode)
                 results = [single]
         except Exception as e:
-            logging.error(f"Error fetching {source.url}: {e}")
+            logging.error("Error fetching %s: %s", source.url, e)
             continue
         for result in results:
             status = result.change_tracking.change_status
@@ -95,9 +113,9 @@ async def run_once() -> None:
                 diff_text = diff_obj.text if diff_obj and diff_obj.text else ""
                 diff_hash = hashlib.sha256(diff_text.encode()).hexdigest()
                 if diff_hash in notified_hashes:
-                    logging.info(f"Skipping duplicate diff for {source.name} ({result.url})")
+                    logging.info("Skipping duplicate diff for %s (%s)", source.name, result.url)
                     continue
                 notified_hashes.add(diff_hash)
-                logging.info(f"Notifying for {source.name}: {status} ({result.url})")
+                logging.info("Notifying for %s: %s (%s)", source.name, status, result.url)
                 await notifier.send(result, source)
     logging.info("run_once completed")

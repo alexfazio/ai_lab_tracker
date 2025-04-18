@@ -31,7 +31,7 @@ class FirecrawlResult(BaseModel):
     """Container for Firecrawl API response including URL, markdown, and change tracking."""
 
     url: HttpUrl
-    markdown: Optional[str]
+    markdown: Optional[str] = None
     change_tracking: ChangeTracking = Field(alias="changeTracking")
 
     class Config:
