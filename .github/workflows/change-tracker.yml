@@ -12,20 +12,15 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('requirements.txt') }}
-      - name: Install deps
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
         run: |
-          # Download UV CLI binary for correct OS/architecture
-          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "x86_64" ]; then ARCH="x86_64"; elif [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi
-          curl -Ls "https://github.com/astral-sh/uv/releases/latest/download/uv-${OS}-${ARCH}" -o uv
-          chmod +x uv && sudo mv uv /usr/local/bin
-          # Install Python dependencies via UV
-          uv pip install --quiet -r requirements.txt
+          pip install --upgrade pip
+          pip install --quiet -r requirements.txt
       - name: Run tracker
         env:
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
