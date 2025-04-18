@@ -18,7 +18,10 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('requirements.txt') }}
       - name: Install deps
         run: |
-          pip install --quiet "uv>=1.1"
+          # Download UV CLI binary
+          curl -Ls https://github.com/astral-sh/uv/releases/latest/download/uv-$(uname -s | tr A-Z a-z)-x86_64 -o uv
+          chmod +x uv && sudo mv uv /usr/local/bin
+          # Install Python dependencies via UV
           uv pip install --quiet -r requirements.txt
       - name: Run tracker
         env:

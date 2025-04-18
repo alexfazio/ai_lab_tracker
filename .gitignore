@@ -123,6 +123,7 @@ dmypy.json
 # IDEs and editors
 .vscode/
 .idea/
+.cursor/
 *.sublime-project
 *.sublime-workspace
 
