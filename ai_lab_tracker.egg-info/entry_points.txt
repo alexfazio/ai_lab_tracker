@@ -1,0 +1,2 @@
+[console_scripts]
+ai_lab_tracker = ai_lab_tracker.cli:main

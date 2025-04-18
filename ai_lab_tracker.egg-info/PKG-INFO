@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: ai_lab_tracker
+Version: 0.1.0
+Summary: A brief one‐line summary
+Author-email: Alex Example <alex@example.com>
+Project-URL: Homepage, https://github.com/yourname/ai_lab_tracker
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: httpx[http2]>=0.27
+Requires-Dist: python-telegram-bot>=21
+Requires-Dist: pydantic>=2
+Requires-Dist: aiofiles>=23
+Provides-Extra: dev

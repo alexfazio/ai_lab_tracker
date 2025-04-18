@@ -1,0 +1,39 @@
+[project]
+name = "ai_lab_tracker"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "A brief one‐line summary"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name="Alex Example", email="alex@example.com" },
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+]
+urls = { "Homepage" = "https://github.com/yourname/ai_lab_tracker" }
+
+dependencies = [
+  "httpx[http2] >=0.27",
+  "python-telegram-bot >=21",
+  "pydantic >=2",
+  "aiofiles >=23",
+]
+
+[project.optional-dependencies]
+dev = [
+  # your dev/test/etc deps here
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["ai_lab_tracker*"]
+exclude = ["sources*"]
+
+[project.scripts]
+ai_lab_tracker = "ai_lab_tracker.cli:main"
