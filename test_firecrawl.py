@@ -1,4 +1,5 @@
 # test_firecrawl.py
+import os
 import asyncio
 import time
 from ai_lab_tracker.firecrawl_adapter import fetch
@@ -7,48 +8,44 @@ from ai_lab_tracker.models import SourceConfig
 from ai_lab_tracker.firecrawl_adapter import RateLimitExceeded
 from aiohttp import ClientError
 
-async def main():
-    # Use HTTPBin UUID endpoint for dynamic JSON data
-    url = "http://httpbin.org/uuid"
-    # Baseline fetch in JsonDiff mode
-    print("Fetching baseline (A)...")
-    r1 = await fetch(url, mode="JsonDiff")
-    d1 = r1.change_tracking.diff
-    print("Baseline diff JSON:", d1.json_data if d1 else "(baseline)")
+"""
+End-to-end Firecrawl test script against a dynamic HTML endpoint.
+Set the environment variable DYNAMIC_URL to a public URL (e.g., via ngrok).
+"""
 
-    # Loop until a new UUID appears (max 5 attempts)
-    for attempt in range(1, 6):
-        time.sleep(10)
-        print(f"Attempt {attempt}: fetching snapshot B")
-        try:
-            r2 = await fetch(url, mode="JsonDiff")
-        except asyncio.TimeoutError:
-            print("Fetch timed out; retrying...")
-            continue
-        except RateLimitExceeded as e:
-            print("Rate limited; retrying after delay...", e)
-            time.sleep(5)
-            continue
-        except ClientError as e:
-            print("HTTP client error; retrying...", e)
-            continue
-        except Exception as e:
-            print("Unexpected error; retrying...", e)
-            continue
-        diff = r2.change_tracking.diff
-        print("Diff JSON data:", diff.json_data if diff else "(no diff)")
-        if diff and diff.json_data:
-            print("Change detected JSON:", diff.json_data)
-            # Send Telegram notification
-            notifier = TelegramNotifier()
-            src = SourceConfig(
-                name="GitHubZen", url=url, mode="JsonDiff", labels=["test"]
-            )
-            print("Sending Telegram notification...")
-            await notifier.send(r2, src)
-            return
-        print("No change yet; retrying...")
-    print("No change detected after 5 attempts.")
+async def main():
+    # Use the provided dynamic URL (or fallback)
+    url = os.getenv("DYNAMIC_URL", "http://localhost:5000")
+    print(f"Using dynamic URL: {url}")
+
+    # Baseline fetch (A)
+    print("Fetching baseline (A)...")
+    r1 = await fetch(url, mode="GitDiff")
+    d1 = r1.change_tracking.diff
+    print("Baseline diff text:", d1.text if d1 and d1.text else "(baseline)")
+
+    # Immediate second fetch (B) - NOTE: Likely hits Firecrawl cache!
+    # Firecrawl's free/hobby tier cache TTL is very long (~17 hours in tests).
+    # To see a real diff, run this script once, wait 17+ hours, then run again.
+    # For rapid testing of logic, use local_diff.py to bypass Firecrawl.
+    print("Fetching second snapshot (B) immediately...")
+    try:
+        r2 = await fetch(url, mode="GitDiff")
+    except Exception as e:
+        print(f"Error fetching second snapshot: {e}")
+        return
+
+    # Check for diff and notify if found
+    diff = r2.change_tracking.diff
+    print("Diff text from A->B:", diff.text if diff else "(no change - likely cached)")
+    if diff and diff.text:
+        print("Real change detected! Sending Telegram notification...")
+        notifier = TelegramNotifier()
+        src = SourceConfig(name="DynamicTest", url=url, mode="GitDiff", labels=["test"])
+        await notifier.send(r2, src)
+    else:
+        print("No diff found. Run again after Firecrawl cache TTL (17+ hours) expires.")
 
 if __name__ == "__main__":
     asyncio.run(main()) 
+ 
