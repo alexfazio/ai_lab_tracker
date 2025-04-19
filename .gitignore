@@ -20,6 +20,7 @@ sdist/
 var/
 wheels/
 *.egg-info/
+ai_lab_tracker.egg-info
 .installed.cfg
 *.egg
 MANIFEST
@@ -97,6 +98,7 @@ celerybeat.pid
 # Environments
 .env
 .venv/
+.venv
 venv/
 ENV/
 env.bak/
