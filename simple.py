@@ -1,97 +1,172 @@
 """
-track_zen.py ― Tiny demo of Firecrawl Change Tracking with https://api.github.com/zen
+track_zen.py ― Tiny demo of Firecrawl Change Tracking with https://www.whattimeisit.com
 
 Prerequisites
 -------------
-pip install firecrawl python-dotenv  # official SDK and .env support
-export FIRECRAWL_API_KEY=fc-...   # your Firecrawl key (or place in .env)
+pip install firecrawl python-dotenv   # official SDK and .env support
+export FIRECRAWL_API_KEY=fc-...       # your Firecrawl key (or place in .env)
 
 Usage
 -----
 python track_zen.py            # run once
-python track_zen.py --watch 60 # re‑scrape every 60 seconds
+python track_zen.py --watch 60 # re‑scrape every 60 seconds
 """
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 import time
-import logging
 from datetime import datetime, timezone
+import requests
 
 try:
     from dotenv import load_dotenv
 except ImportError:
     sys.exit("Please `pip install python-dotenv` for .env support.")
 try:
-    from firecrawl import FirecrawlApp
+    # documented import path (re‑exported at top level too)
+    from firecrawl.firecrawl import FirecrawlApp
 except ImportError:
     sys.exit("Please `pip install firecrawl` before running this script.")
 
-load_dotenv()  # Load environment variables from .env file
+# ---------------------------------------------------------------------------
+
+load_dotenv()  # Load environment variables from .env
 
 API_KEY = os.getenv("FIRECRAWL_API_KEY")
 if not API_KEY:
     sys.exit("Set the FIRECRAWL_API_KEY environment variable first.")
 
-# Use a clock website that changes frequently for testing
-CLOCK_URL = "http://www.whattimeisit.com"
+# Use a page that returns a random dad joke on each request (server‑rendered HTML)
+# This avoids TLS issues seen with previous endpoints and guarantees content changes.
+CLOCK_URL = "https://icanhazdadjoke.com/"
+
+# Firecrawl parameters: request both markdown and change‑tracking formats
+SCRAPE_PARAMS = {
+    "formats": ["markdown", "changeTracking"],
+    "changeTrackingOptions": {"modes": ["git-diff"]},
+}
+
+
+def now() -> str:
+    """Current UTC time in ISO‑8601."""
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def firecrawl_raw_scrape(url: str, params: dict[str, object], api_key: str) -> dict:
+    """Directly call Firecrawl REST API, returning raw JSON with changeTracking."""
+    api_url = "https://api.firecrawl.dev/v1/scrape"
+    headers = {"Authorization": f"Bearer {api_key}"}
+    payload = {"url": url, **params}
+    response = requests.post(api_url, json=payload, headers=headers, timeout=60)
+    response.raise_for_status()
+    data = response.json()
+    if not data.get("success"):
+        raise RuntimeError(f"Firecrawl error: {data}")
+    return data["data"]
 
 
 def scrape_once(app: FirecrawlApp) -> str:
     """
-    Scrape the Clock URL with changeTracking enabled and print any diff.
-    Returns the changeStatus ('new' | 'same' | 'changed' | 'removed').
+    Scrape the target URL with change‑tracking enabled and print any diff.
+
+    Returns the Firecrawl changeStatus ('new' | 'same' | 'changed' | 'removed').
     """
-    scrape_params = {
-        "formats": ["markdown", "changeTracking"],
-        "changeTrackingOptions": {"modes": ["git-diff"]},
-    }
-    logging.info("Scraping URL: %s with params: %s", CLOCK_URL, scrape_params)
     try:
+        # SDK call first (may drop changeTracking)
         result = app.scrape_url(
             CLOCK_URL,
-            formats=scrape_params["formats"],
-            changeTrackingOptions=scrape_params["changeTrackingOptions"],
+            formats=["markdown", "changeTracking"],
+            changeTrackingOptions={"modes": ["git-diff"]},
         )
-        logging.info("Received response: %r", result)
-    except Exception as e:
+        # If changeTracking missing, fallback to raw REST call
+        if hasattr(result, "dict") and "changeTracking" not in result.dict():
+            logging.debug("SDK response missing changeTracking – falling back to raw REST call")
+            raw = firecrawl_raw_scrape(CLOCK_URL, SCRAPE_PARAMS, API_KEY)
+            result = raw  # overwrite with raw dict containing changeTracking
+    except TypeError:
+        # In case SDK signature complains again, use raw REST call directly
+        logging.debug("SDK call failed, using raw REST call")
+        result = firecrawl_raw_scrape(CLOCK_URL, SCRAPE_PARAMS, API_KEY)
+    except requests.exceptions.HTTPError as http_err:  # type: ignore[attr-defined]
+        resp = http_err.response  # type: ignore[attr-defined]
+        if resp is not None:
+            logging.error("HTTP %s error. Response text: %s", resp.status_code, resp.text)
+        logging.exception("HTTPError during scrape_url call")
+        return "error"
+    except Exception:
         logging.exception("Error during scrape_url call")
         return "error"
 
-    status = "unknown"
-    previous_scrape_at = None
-    if hasattr(result, "changeTracking") and result.changeTracking:
-        ct = result.changeTracking
-        status = ct.changeStatus if hasattr(ct, "changeStatus") else "unknown"
-        previous_scrape_at = (
-            ct.previousScrapeAt if hasattr(ct, "previousScrapeAt") else None
-        )
-
-        print(
-            f"[{datetime.now(timezone.utc).isoformat()}] changeStatus={status} "
-            f"previousScrapeAt={previous_scrape_at}"
-        )
-
-        # If the content changed and git‑diff mode is available, print the diff text
-        if status == "changed" and hasattr(ct, "diff") and ct.diff:
-            print("---- Git‑Diff ----")
-            print(ct.diff.text if hasattr(ct.diff, "text") else "No diff text available.")
-            print("------------------")
+    # Check if result is a dictionary or an object with attributes
+    if hasattr(result, '__getitem__'):
+        # Dictionary-like access
+        change = result.get("changeTracking")
+    elif hasattr(result, 'changeTracking'):
+        # Object attribute access
+        change = result.changeTracking
     else:
-        # changeTracking attribute was missing from the response
-        print(
-            f"[{datetime.now(timezone.utc).isoformat()}] No changeTracking data found in Firecrawl response."
-        )
+        # Try to convert to dict if it has a method for that
+        try:
+            if hasattr(result, 'to_dict'):
+                result_dict = result.to_dict()
+                change = result_dict.get("changeTracking")
+            elif hasattr(result, '__dict__'):
+                result_dict = result.__dict__
+                change = result_dict.get("changeTracking")
+            else:
+                change = None
+        except Exception:
+            logging.exception("Error accessing changeTracking data")
+            change = None
+
+    if not change:
+        print(f"[{now()}] No changeTracking data found in Firecrawl response.")
+        return "unknown"
+
+    # Handle both dictionary and object access for status and previousScrapeAt
+    if hasattr(change, '__getitem__'):
+        status = change.get("changeStatus", "unknown")
+        previous = change.get("previousScrapeAt")
+        diff = change.get("diff")
+    else:
+        status = getattr(change, "changeStatus", "unknown")
+        previous = getattr(change, "previousScrapeAt", None)
+        diff = getattr(change, "diff", None)
+
+    print(f"[{now()}] changeStatus={status} previousScrapeAt={previous}")
+
+    if status == "changed" and diff:
+        print("---- Git‑Diff ----")
+        # Handle both dictionary and object access for diff text
+        if hasattr(diff, '__getitem__'):
+            diff_text = diff.get("text", "<no diff text>")
+        else:
+            diff_text = getattr(diff, "text", "<no diff text>")
+        print(diff_text)
+        print("------------------")
+
+    if hasattr(result, 'dict'):
+        logging.debug("Result dict: %s", result.dict(exclude_none=True))
+    else:
+        logging.debug("Raw result: %r", result)
+
+    if not change:
+        if isinstance(result, dict):
+            logging.debug("Top-level keys in result: %s", list(result.keys()))
+        elif hasattr(result, '__dict__'):
+            logging.debug("Top-level attributes in result: %s", list(result.__dict__.keys()))
 
     return status
 
 
 def main() -> None:
-    # Configure logging
+    """CLI entry point."""
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
     )
 
     parser = argparse.ArgumentParser(
@@ -101,9 +176,17 @@ def main() -> None:
         "--watch",
         type=int,
         metavar="SECONDS",
-        help="Poll the Zen URL every SECONDS seconds (Ctrl‑C to quit)",
+        help="Poll the URL every SECONDS seconds (Ctrl‑C to quit)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug logging",
     )
     args = parser.parse_args()
+
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     app = FirecrawlApp(api_key=API_KEY)
 
