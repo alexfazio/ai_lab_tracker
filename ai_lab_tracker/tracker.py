@@ -29,6 +29,10 @@ async def run_once() -> None:
     # Base configuration prints to stdout
     logging.basicConfig(level=config.LOG_LEVEL, format="%(asctime)s - %(levelname)s - %(message)s")
 
+    # If LOG_LEVEL is WARNING or higher, silence lower‑level logs globally.
+    if config.LOG_LEVEL >= logging.WARNING:
+        logging.disable(config.LOG_LEVEL)
+
     # Optionally forward logs to Telegram if enabled
     send_logs = config.TELEGRAM_SEND_LOGS
     bot_token_env = config.TELEGRAM_BOT_TOKEN
