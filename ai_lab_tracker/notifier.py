@@ -4,6 +4,7 @@ import asyncio
 import os
 from pathlib import Path
 from typing import List, Union, Optional
+import re
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import RetryAfter
@@ -79,9 +80,38 @@ class TelegramNotifier:
             # Nothing to send
             return
 
+        # ------------------------------------------------------------------
+        # Render a compact, human‑readable summary of the diff
+        # ------------------------------------------------------------------
+        def _summarise(git_diff: str, max_lines: int = 30) -> str:
+            """Return a cleaned / truncated representation of *git_diff*."""
+            cleaned: list[str] = []
+            noise_patterns = [
+                re.compile(r"your browser does not support", re.I),
+                re.compile(r"<iframe", re.I),
+            ]
+            for line in git_diff.splitlines():
+                # Skip metadata lines
+                if line.startswith(("+++", "---", "@@")):
+                    continue
+                if not line.startswith(("+", "-")):
+                    continue
+                txt = line[1:].strip()
+                if any(p.search(txt) for p in noise_patterns):
+                    continue
+                # Collapse multiple spaces
+                txt = re.sub(r"\s+", " ", txt)
+                cleaned.append(("➕ " if line.startswith("+") else "➖ ") + txt)
+                if len(cleaned) >= max_lines:
+                    cleaned.append("… (truncated) …")
+                    break
+            return "\n".join(cleaned) if cleaned else git_diff
+
+        pretty = _summarise(diff_text)
+
         title = source.name
         url = str(source.url)
-        message = f"⚡ *{title}*\n{url}\n\n```diff\n{diff_text}```"
+        message = f"⚡ *{title}*\n{url}\n\n{pretty}"
         button = [[InlineKeyboardButton("View page", url=url)]]
         markup = InlineKeyboardMarkup(button)
 
