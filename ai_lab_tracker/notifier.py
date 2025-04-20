@@ -100,16 +100,29 @@ class TelegramNotifier:
                 re.compile(r"!\[.*?\]\(.*?\)"),  # markdown image
             ]
 
+            link_re = re.compile(r"\[([^\]]+)\]\([^\)]+\)")
+
+            def _markdown_to_text(text: str) -> str:
+                """Convert simple markdown links/images to plain text titles."""
+                # Strip images completely
+                text = re.sub(r"!\[[^\]]*\]\([^\)]*\)", "", text)
+                # Convert links: [title](url) -> title
+                return link_re.sub(r"\1", text)
+
             def _clean(txt: str) -> str:
-                # Remove markdown images
-                txt = re.sub(r"!\[.*?\]\(.*?\)", "", txt)
-                # Shorten URLs (keep domain/path, drop query params)
-                txt = re.sub(r"https?://([^\s)]+)\?[^\s)]+", r"https://\1", txt)
-                # Collapse whitespace
+                txt = _markdown_to_text(txt)
+                # Remove leftover URLs in parentheses
+                txt = re.sub(r"https?://[^ )]+", "", txt)
+                # Remove pipes and redundant symbols
+                txt = re.sub(r"\|", " ", txt)
+                # Collapse whitespace and punctuation spacing
+                txt = re.sub(r"\s+", " ", txt).strip(" -|\t")
+                # Compact date/time by removing redundant words like 'ago'
+                txt = re.sub(r"\b(ago|hide)\b", "", txt, flags=re.I)
                 txt = re.sub(r"\s+", " ", txt).strip()
                 # Truncate long lines
-                if len(txt) > 120:
-                    txt = txt[:117] + "…"
+                if len(txt) > 100:
+                    txt = txt[:97] + "…"
                 return txt
 
             for line in git_diff.splitlines():
@@ -121,7 +134,8 @@ class TelegramNotifier:
                 txt = _clean(line[1:])
                 if not txt or any(p.search(txt) for p in noise_patterns):
                     continue
-                additions.append("• " + txt)
+                if txt:
+                    additions.append("• " + txt)
                 if len(additions) >= max_lines:
                     additions.append("… (truncated) …")
                     break
