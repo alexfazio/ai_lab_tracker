@@ -81,7 +81,42 @@ class TelegramNotifier:
             return
 
         # ------------------------------------------------------------------
-        # Render a compact, human‑readable summary of the diff
+        # Generate a one‑sentence summary via OpenAI if API key available
+        # ------------------------------------------------------------------
+
+        async def _openai_summary(diff_markdown: str) -> str | None:  # noqa: D401
+            """Return one‑sentence summary using OpenAI o4‑mini if configured."""
+            if not os.getenv("OPENAI_API_KEY", ""):
+                return None
+            # Trim diff to reasonable length (o4‑mini context ~8k)
+            snippet = diff_markdown[:4000]
+            prompt = (
+                "You will be given a Git‑style diff from a web page scrape."
+                " Summarise *in one short sentence* the main change that happened."
+                " Do not mention the diff itself."
+            )
+            try:
+                import openai
+
+                response = await openai.ChatCompletion.acreate(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": snippet},
+                    ],
+                    max_tokens=60,
+                    temperature=0.3,
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as exc:  # noqa: BLE001
+                # Log but fallback gracefully
+                import logging
+
+                logging.debug("OpenAI summary failed: %s", exc)
+                return None
+
+        # ------------------------------------------------------------------
+        # Local heuristic fallback summary builder
         # ------------------------------------------------------------------
         def _summarise(git_diff: str, max_lines: int = 20) -> str:
             """Convert a Git‑diff into a short, human‑readable changelog.
@@ -157,11 +192,13 @@ class TelegramNotifier:
             # Fallback
             return "\n".join(summary_lines) if summary_lines else git_diff
 
-        pretty = _summarise(diff_text)
+        summary = await _openai_summary(diff_text)
+        if not summary:
+            summary = _summarise(diff_text)
 
         title = source.name
         url = str(source.url)
-        message = f"⚡ *{title}*\n{url}\n\n{pretty}"
+        message = f"⚡ *{title}*\n{url}\n\n{summary}"
         button = [[InlineKeyboardButton("View page", url=url)]]
         markup = InlineKeyboardMarkup(button)
 

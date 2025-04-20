@@ -16,4 +16,5 @@ Requires-Dist: PyYAML>=5.4
 Requires-Dist: firecrawl-py>=2.0.2
 Requires-Dist: flask>=3.1.0
 Requires-Dist: ngrok>=1.4.0
+Requires-Dist: openai>=1.16
 Provides-Extra: dev
