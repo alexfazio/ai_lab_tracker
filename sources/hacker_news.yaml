@@ -1,0 +1,7 @@
+# sources/hacker_news.yaml
+name: Hacker News
+url: https://news.ycombinator.com/news
+mode: GitDiff
+cadence: "*/10 * * * *"
+labels: [news, hackernews]
+enabled: true 
