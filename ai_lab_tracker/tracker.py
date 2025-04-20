@@ -17,12 +17,32 @@ from .models import FirecrawlResult, SourceConfig, ChangeTracking, Diff
 from .notifier import TelegramNotifier
 from .source_loader import load_sources
 
+# Optional Telegram logging
+from .telegram_log_handler import TelegramLogHandler
+
 async def run_once() -> None:
     """Run one iteration of the tracker: fetch all sources and notify changes."""
     # =================================================================================================
     # Global throttle
     # =================================================================================================
-    logging.basicConfig(level=logging.INFO)
+    # Base configuration prints to stdout
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+    # Optionally forward logs to Telegram if enabled
+    send_logs = os.getenv("TELEGRAM_SEND_LOGS", "false").lower() in {"1", "true", "yes"}
+    bot_token_env = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_ids_env = os.getenv("TELEGRAM_CHAT_IDS", "")
+    if send_logs and bot_token_env and chat_ids_env:
+        try:
+            bot = TelegramNotifier(bot_token_env, chat_ids_env).bot  # reuse Bot instance
+            chat_ids = TelegramNotifier(bot_token_env, chat_ids_env).chat_ids
+            handler = TelegramLogHandler(bot, chat_ids)
+            handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+            logging.getLogger().addHandler(handler)
+            logging.info("Telegram log handler activated for %s chat(s)", len(chat_ids))
+        except Exception as exc:  # noqa: BLE001  (we swallow to not break main flow)
+            logging.error("Failed to initialize TelegramLogHandler: %s", exc)
+
     # Global throttle: skip if last run was within 60 seconds
     state_dir = pathlib.Path('.state')
     state_dir.mkdir(exist_ok=True)
