@@ -4,3 +4,4 @@ url: https://openai.com/blog
 mode: GitDiff
 cadence: "*/30 * * * *"
 labels: [openai, blog]
+enabled: true

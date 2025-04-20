@@ -4,3 +4,4 @@ url: https://www.anthropic.com/news
 mode: GitDiff
 cadence: "*/10 * * * *"
 labels: [anthropic, news]
+enabled: true

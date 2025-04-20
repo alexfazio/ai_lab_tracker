@@ -94,6 +94,9 @@ async def run_once() -> None:
     # =================================================================================================
     notified_hashes = set()
     for source in sources:
+        if not getattr(source, "enabled", True):
+            logging.info("Source %s disabled – skipping", source.name)
+            continue
         try:
             # Handle documentation sources via rotation
             if source.labels and 'docs' in source.labels:

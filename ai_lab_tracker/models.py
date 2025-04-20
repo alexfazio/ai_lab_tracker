@@ -58,6 +58,7 @@ class SourceConfig(BaseModel):
     url: HttpUrl
     mode: Optional[str] = "GitDiff"
     cadence: Optional[str] = None
+    enabled: bool = True
     labels: List[str] = Field(default_factory=list)
     crawl_options: Optional[CrawlOptions] = Field(default=None, alias="crawlOptions")
 

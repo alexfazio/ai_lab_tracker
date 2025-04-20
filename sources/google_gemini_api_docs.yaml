@@ -7,3 +7,4 @@ labels: [google, gemini, docs]
 crawlOptions:
   allowBackwardLinks: false
   maxDepth: 3
+enabled: true
