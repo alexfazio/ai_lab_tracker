@@ -1,0 +1,85 @@
+"""Send dummy change notifications for every enabled source.
+
+Utility script to preview Telegram notification formatting without waiting
+for real website updates. It fakes a `FirecrawlResult` with synthetic diff
+content and pushes it through the existing `TelegramNotifier`.
+
+Usage:
+    python -m ai_lab_tracker.dummy_notify
+
+Environment variables (same as production):
+    TELEGRAM_BOT_TOKEN  – Telegram Bot HTTP API token
+    TELEGRAM_CHAT_IDS   – Comma‑separated list of chat ids
+"""
+
+from __future__ import annotations
+
+import asyncio
+import os
+from datetime import datetime
+from pathlib import Path
+from random import randint, choice
+
+from ai_lab_tracker.models import FirecrawlResult, ChangeTracking, Diff, SourceConfig
+from ai_lab_tracker.source_loader import load_sources
+from ai_lab_tracker.notifier import TelegramNotifier
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+_FAKE_ADDITIONS = [
+    "New section added about pricing plans",
+    "Updated API endpoint description",
+    "Fixed typo in code sample",
+    "Added link to changelog",
+    "Clarified authentication paragraph",
+]
+
+_FAKE_REMOVALS = [
+    "Removed deprecated endpoint details",
+    "Deleted old screenshot",
+    "Obsolete FAQ entry removed",
+]
+
+
+def _build_dummy_diff() -> str:
+    """Return a synthetic git‑style diff string."""
+    added = [f"+ {choice(_FAKE_ADDITIONS)}" for _ in range(randint(1, 3))]
+    removed = [f"- {choice(_FAKE_REMOVALS)}" for _ in range(randint(0, 2))]
+    header = "@@ -10,7 +10,8 @@"
+    return "\n".join([header, *added, *removed])
+
+
+async def main() -> None:  # noqa: D401
+    """Load sources and send dummy diff notifications."""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_ids = os.getenv("TELEGRAM_CHAT_IDS", "")
+    if not bot_token or not chat_ids:
+        raise SystemExit("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_IDS must be set")
+
+    notifier = TelegramNotifier(bot_token, chat_ids)
+
+    sources = load_sources()
+    enabled_sources = [s for s in sources if getattr(s, "enabled", True)]
+
+    for src in enabled_sources:
+        diff_text = _build_dummy_diff()
+        diff_obj = Diff(text=diff_text)
+        change = ChangeTracking(
+            previous_scrape_at=datetime.utcnow(),
+            change_status="changed",
+            visibility="public",
+            diff=diff_obj,
+        )
+        dummy = FirecrawlResult(
+            url=src.url,
+            markdown="",  # not used in notifier
+            change_tracking=change,
+        )
+        # Send sequentially to avoid exhausting httpx connection pool
+        await notifier.send(dummy, src)
+
+
+if __name__ == "__main__":
+    asyncio.run(main()) 
