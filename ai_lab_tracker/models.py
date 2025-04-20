@@ -32,7 +32,7 @@ class FirecrawlResult(BaseModel):
 
     url: HttpUrl
     markdown: Optional[str] = None
-    change_tracking: ChangeTracking = Field(alias="changeTracking")
+    change_tracking: Optional[ChangeTracking] = Field(default=None, alias="changeTracking")
 
     class Config:
         """Allow population of fields by their Pydantic field name, not alias."""

@@ -119,6 +119,13 @@ async def fetch(url: str, mode: str = "GitDiff") -> FirecrawlResult:
         raise ValueError("No data returned in Firecrawl response")
     # Ensure the URL is present for model validation
     data["url"] = url_str
+    # Ensure changeTracking key exists to satisfy model; Firecrawl sometimes omits
+    if "changeTracking" not in data:
+        data["changeTracking"] = {
+            "previousScrapeAt": None,
+            "changeStatus": "unknown",
+            "visibility": "public",
+        }
     # Validate and return high-level result model
     return FirecrawlResult.model_validate(data)
 
@@ -158,5 +165,11 @@ async def crawl_and_fetch(
     for item in items:
         item_url = item.get("url", url_str)
         item["url"] = item_url
+        if "changeTracking" not in item:
+            item["changeTracking"] = {
+                "previousScrapeAt": None,
+                "changeStatus": "unknown",
+                "visibility": "public",
+            }
         results.append(FirecrawlResult.model_validate(item))
     return results
