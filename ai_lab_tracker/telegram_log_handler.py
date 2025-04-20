@@ -16,6 +16,23 @@ from telegram import Bot
 # Telegram limits messages to 4096 bytes; we stay below that to be safe.
 _MAX_LEN = 4000
 
+# -----------------------------------------------------------------------------
+# Concurrency helpers
+# -----------------------------------------------------------------------------
+
+import asyncio
+
+# Global lock to serialize Telegram API calls from all handler instances.
+_send_lock: asyncio.Lock | None = None
+
+
+def _get_lock() -> asyncio.Lock:
+    """Return a singleton asyncio.Lock (created lazily)."""
+    global _send_lock  # noqa: PLW0603
+    if _send_lock is None:
+        _send_lock = asyncio.Lock()
+    return _send_lock
+
 
 class TelegramLogHandler(logging.Handler):
     """A logging handler that forwards log records to Telegram chats.
@@ -48,7 +65,21 @@ class TelegramLogHandler(logging.Handler):
         end = len(text)
         while start < end:
             chunk = text[start : min(start + _MAX_LEN, end)]  # noqa: E203  (black slice)
-            await self._bot.send_message(chat_id=chat_id, text=chunk)
+            # Serialize concurrent sends to stay within bot's connection pool
+            lock = _get_lock()
+            async with lock:
+                # Basic retry on pool timeout
+                attempts = 0
+                while True:
+                    try:
+                        await self._bot.send_message(chat_id=chat_id, text=chunk)
+                        break
+                    except Exception as exc:  # noqa: BLE001
+                        attempts += 1
+                        if attempts >= 3:
+                            raise
+                        # Wait a bit and retry (Telegram rate limit or pool timeout)
+                        await asyncio.sleep(1.5 * attempts)
             start += _MAX_LEN
 
     def _send(self, text: str) -> None:
