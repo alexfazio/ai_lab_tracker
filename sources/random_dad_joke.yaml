@@ -4,4 +4,4 @@ url: https://icanhazdadjoke.com/
 mode: GitDiff
 labels: [test]
 cadence: "*/10 * * * *"
-enabled: false
+enabled: true

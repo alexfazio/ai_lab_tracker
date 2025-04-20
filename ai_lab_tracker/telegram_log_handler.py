@@ -12,6 +12,7 @@ import logging
 from typing import List
 
 from telegram import Bot
+from telegram.error import RetryAfter
 
 # Telegram limits messages to 4096 bytes; we stay below that to be safe.
 _MAX_LEN = 4000
@@ -74,12 +75,16 @@ class TelegramLogHandler(logging.Handler):
                     try:
                         await self._bot.send_message(chat_id=chat_id, text=chunk)
                         break
-                    except Exception as exc:  # noqa: BLE001
+                    except RetryAfter as rex:
+                        # Telegram flood‑control: sleep the advised time + small buffer
+                        await asyncio.sleep(rex.retry_after + 1)
+                        # do not count against attempts
+                        continue
+                    except Exception:
                         attempts += 1
                         if attempts >= 3:
                             raise
-                        # Wait a bit and retry (Telegram rate limit or pool timeout)
-                        await asyncio.sleep(1.5 * attempts)
+                        await asyncio.sleep(2 * attempts)
             start += _MAX_LEN
 
     def _send(self, text: str) -> None:
