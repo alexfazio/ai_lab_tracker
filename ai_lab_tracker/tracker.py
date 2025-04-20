@@ -16,6 +16,7 @@ from .firecrawl_adapter import crawl_and_fetch, fetch
 from .models import FirecrawlResult, SourceConfig, ChangeTracking, Diff
 from .notifier import TelegramNotifier
 from .source_loader import load_sources
+from . import config
 
 # Optional Telegram logging
 from .telegram_log_handler import TelegramLogHandler
@@ -26,12 +27,12 @@ async def run_once() -> None:
     # Global throttle
     # =================================================================================================
     # Base configuration prints to stdout
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(level=config.LOG_LEVEL, format="%(asctime)s - %(levelname)s - %(message)s")
 
     # Optionally forward logs to Telegram if enabled
-    send_logs = os.getenv("TELEGRAM_SEND_LOGS", "false").lower() in {"1", "true", "yes"}
-    bot_token_env = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_ids_env = os.getenv("TELEGRAM_CHAT_IDS", "")
+    send_logs = config.TELEGRAM_SEND_LOGS
+    bot_token_env = config.TELEGRAM_BOT_TOKEN
+    chat_ids_env = config.TELEGRAM_CHAT_IDS
     if send_logs and bot_token_env and chat_ids_env:
         try:
             bot = TelegramNotifier(bot_token_env, chat_ids_env).bot  # reuse Bot instance
@@ -60,8 +61,8 @@ async def run_once() -> None:
     # =================================================================================================
     # Initialize notifier
     # =================================================================================================
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_ids = os.getenv("TELEGRAM_CHAT_IDS", "")
+    bot_token = config.TELEGRAM_BOT_TOKEN
+    chat_ids = config.TELEGRAM_CHAT_IDS
     notifier = TelegramNotifier(bot_token, chat_ids)
 
     # =================================================================================================

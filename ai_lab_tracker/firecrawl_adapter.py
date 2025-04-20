@@ -10,6 +10,7 @@ from collections import deque
 from typing import Optional, List
 
 from .models import FirecrawlResult, CrawlOptions
+from . import config
 
 # =================================================================================================
 # CLIENT INITIALIZATION
@@ -20,7 +21,7 @@ _firecrawl_mod = importlib.import_module("firecrawl.firecrawl")
 AsyncFirecrawlApp = getattr(_firecrawl_mod, "AsyncFirecrawlApp")
 
 # Validate presence of FIRECRAWL_API_KEY environment variable
-api_key: str | None = os.getenv("FIRECRAWL_API_KEY")
+api_key = config.FIRECRAWL_API_KEY
 if not api_key:
     raise ValueError("FIRECRAWL_API_KEY environment variable is not set")
 
@@ -30,9 +31,9 @@ APP: AsyncFirecrawlApp = AsyncFirecrawlApp(api_key=api_key)
 # RATE LIMIT CONFIGURATION
 # =================================================================================================
 # Number of allowed Firecrawl requests per sliding 60-second window (free tier defaults ~5)
-_RATE_LIMIT_PER_MINUTE = int(os.getenv("FIRECRAWL_RATE_LIMIT_PER_MINUTE", "5"))
+_RATE_LIMIT_PER_MINUTE = config.FIRECRAWL_RATE_LIMIT_PER_MINUTE
 # Sliding window duration in seconds
-_RATE_WINDOW = 60.0
+_RATE_WINDOW = config.RATE_WINDOW
 # Deque to hold timestamps of the last calls
 _call_timestamps: deque[float] = deque()
 
