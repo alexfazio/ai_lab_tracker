@@ -96,6 +96,12 @@ async def fetch(url: str, mode: str = "GitDiff") -> FirecrawlResult:
     """
     # Ensure URL is serializable
     url_str = str(url)
+    # Canonicalise mode to Firecrawl enum ("git-diff" | "json")
+    mode_value = mode.lower()
+    if mode_value in {"gitdiff", "git-diff"}:
+        mode_value = "git-diff"
+    elif mode_value == "json":
+        mode_value = "json"
     # Build request parameters for change tracking
     endpoint = "/v1/scrape"
     headers = APP._prepare_headers()
@@ -103,7 +109,7 @@ async def fetch(url: str, mode: str = "GitDiff") -> FirecrawlResult:
     payload = {
         "url": url_str,
         "formats": ["markdown", "changeTracking"],
-        "changeTrackingOptions": {"modes": [mode]}
+        "changeTrackingOptions": {"modes": [mode_value]}
     }
     # POST with retry on rate limit
     response = await _post_with_retry(f"{APP.api_url}{endpoint}", payload, headers)
@@ -131,10 +137,17 @@ async def crawl_and_fetch(
     payload: dict = {"url": url_str}
     if crawl_options:
         payload.update(crawl_options.model_dump(by_alias=True, exclude_none=True))
+    # Canonicalise mode to Firecrawl enum
+    mode_value = mode.lower()
+    if mode_value in {"gitdiff", "git-diff"}:
+        mode_value = "git-diff"
+    elif mode_value == "json":
+        mode_value = "json"
+
     # Include changeTrackingOptions inside scrapeOptions
     payload["scrapeOptions"] = {
         "formats": ["markdown", "changeTracking"],
-        "changeTrackingOptions": {"modes": [mode]}
+        "changeTrackingOptions": {"modes": [mode_value]},
     }
 
     # POST with retry on rate limit
