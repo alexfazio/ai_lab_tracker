@@ -19,6 +19,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from random import randint, choice
+import argparse
 
 from ai_lab_tracker.models import FirecrawlResult, ChangeTracking, Diff, SourceConfig
 from ai_lab_tracker.source_loader import load_sources
@@ -51,8 +52,13 @@ def _build_dummy_diff() -> str:
     return "\n".join([header, *added, *removed])
 
 
-async def main() -> None:  # noqa: D401
-    """Load sources and send dummy diff notifications."""
+async def main(send: bool) -> None:  # noqa: D401
+    """Load sources and optionally send dummy diff notifications."""
+
+    if not send:
+        print("\nDummy‑notify: run with --send to push test messages to Telegram.\n")
+        return
+
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_ids = os.getenv("TELEGRAM_CHAT_IDS", "")
     if not bot_token or not chat_ids:
@@ -81,5 +87,18 @@ async def main() -> None:  # noqa: D401
         await notifier.send(dummy, src)
 
 
+def cli() -> None:
+    """CLI entry point requiring --send flag."""
+    parser = argparse.ArgumentParser(description="Send dummy change notifications to Telegram")
+    parser.add_argument(
+        "--send",
+        action="store_true",
+        help="Actually send messages (omit for dry‑run/no‑op)",
+    )
+    args = parser.parse_args()
+
+    asyncio.run(main(args.send))
+
+
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    cli() 

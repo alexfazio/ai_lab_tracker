@@ -86,26 +86,29 @@ class TelegramNotifier:
 
         async def _openai_summary(diff_markdown: str) -> str | None:  # noqa: D401
             """Return one‑sentence summary using OpenAI o4‑mini if configured."""
-            if not os.getenv("OPENAI_API_KEY", ""):
+            key = os.getenv("OPENAI_API_KEY", "")
+            if not key:
                 return None
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=key)
             # Trim diff to reasonable length (o4‑mini context ~8k)
             snippet = diff_markdown[:4000]
             prompt = (
-                "You will be given a Git‑style diff from a web page scrape."
-                " Summarise *in one short sentence* the main change that happened."
-                " Do not mention the diff itself."
+                "You act as a change‑tracker for AI‑lab documentation & blogs. "
+                "Given a Git‑style diff, EXTRACT the concrete, user‑relevant changes. "
+                "Return up to THREE short bullet‑points (start each with •). "
+                "Each bullet should mention specific nouns/numbers: new model names, endpoint paths, parameters, dates, etc. "
+                "Omit boilerplate like 'the page was updated'. Concise, factual."
             )
             try:
-                import openai
-
-                response = await openai.ChatCompletion.acreate(
+                response = await client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": prompt},
                         {"role": "user", "content": snippet},
                     ],
-                    max_tokens=60,
-                    temperature=0.3,
+                    max_tokens=120,
+                    temperature=0.2,
                 )
                 return response.choices[0].message.content.strip()
             except Exception as exc:  # noqa: BLE001
