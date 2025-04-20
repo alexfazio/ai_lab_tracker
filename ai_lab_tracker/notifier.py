@@ -83,29 +83,51 @@ class TelegramNotifier:
         # ------------------------------------------------------------------
         # Render a compact, human‑readable summary of the diff
         # ------------------------------------------------------------------
-        def _summarise(git_diff: str, max_lines: int = 30) -> str:
-            """Return a cleaned / truncated representation of *git_diff*."""
-            cleaned: list[str] = []
+        def _summarise(git_diff: str, max_lines: int = 25) -> str:
+            """Return a concise, human‑readable diff summary.
+
+            Heuristics:
+            • Show only *added* lines (green `+`) – these usually represent the
+              latest state after change.
+            • Strip noisy media tags and very long URLs.
+            • Collapse multiple spaces and truncate long lines.
+            """
+
+            additions: list[str] = []
             noise_patterns = [
                 re.compile(r"your browser does not support", re.I),
                 re.compile(r"<iframe", re.I),
+                re.compile(r"!\[.*?\]\(.*?\)"),  # markdown image
             ]
+
+            def _clean(txt: str) -> str:
+                # Remove markdown images
+                txt = re.sub(r"!\[.*?\]\(.*?\)", "", txt)
+                # Shorten URLs (keep domain/path, drop query params)
+                txt = re.sub(r"https?://([^\s)]+)\?[^\s)]+", r"https://\1", txt)
+                # Collapse whitespace
+                txt = re.sub(r"\s+", " ", txt).strip()
+                # Truncate long lines
+                if len(txt) > 120:
+                    txt = txt[:117] + "…"
+                return txt
+
             for line in git_diff.splitlines():
-                # Skip metadata lines
+                # Skip headers
                 if line.startswith(("+++", "---", "@@")):
                     continue
-                if not line.startswith(("+", "-")):
+                if not line.startswith("+"):
+                    continue  # only additions
+                txt = _clean(line[1:])
+                if not txt or any(p.search(txt) for p in noise_patterns):
                     continue
-                txt = line[1:].strip()
-                if any(p.search(txt) for p in noise_patterns):
-                    continue
-                # Collapse multiple spaces
-                txt = re.sub(r"\s+", " ", txt)
-                cleaned.append(("➕ " if line.startswith("+") else "➖ ") + txt)
-                if len(cleaned) >= max_lines:
-                    cleaned.append("… (truncated) …")
+                additions.append("• " + txt)
+                if len(additions) >= max_lines:
+                    additions.append("… (truncated) …")
                     break
-            return "\n".join(cleaned) if cleaned else git_diff
+
+            # Fallback to original diff if nothing survived cleaning
+            return "\n".join(additions) if additions else git_diff
 
         pretty = _summarise(diff_text)
 
