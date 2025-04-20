@@ -83,17 +83,16 @@ class TelegramNotifier:
         # ------------------------------------------------------------------
         # Render a compact, human‑readable summary of the diff
         # ------------------------------------------------------------------
-        def _summarise(git_diff: str, max_lines: int = 25) -> str:
-            """Return a concise, human‑readable diff summary.
+        def _summarise(git_diff: str, max_lines: int = 20) -> str:
+            """Convert a Git‑diff into a short, human‑readable changelog.
 
-            Heuristics:
-            • Show only *added* lines (green `+`) – these usually represent the
-              latest state after change.
-            • Strip noisy media tags and very long URLs.
-            • Collapse multiple spaces and truncate long lines.
+            We keep both added (🆕) and removed (🗑️) lines so the reader can see
+            what appeared and disappeared. Lines are cleaned to remove markdown
+            noise and truncated for brevity.
             """
 
             additions: list[str] = []
+            deletions: list[str] = []
             noise_patterns = [
                 re.compile(r"your browser does not support", re.I),
                 re.compile(r"<iframe", re.I),
@@ -126,22 +125,37 @@ class TelegramNotifier:
                 return txt
 
             for line in git_diff.splitlines():
-                # Skip headers
+                # Skip headers and context lines
                 if line.startswith(("+++", "---", "@@")):
                     continue
-                if not line.startswith("+"):
-                    continue  # only additions
+                if not line.startswith(("+", "-")):
+                    continue
+
                 txt = _clean(line[1:])
                 if not txt or any(p.search(txt) for p in noise_patterns):
                     continue
-                if txt:
-                    additions.append("• " + txt)
-                if len(additions) >= max_lines:
-                    additions.append("… (truncated) …")
-                    break
 
-            # Fallback to original diff if nothing survived cleaning
-            return "\n".join(additions) if additions else git_diff
+                if line.startswith("+"):
+                    additions.append(txt)
+                else:
+                    deletions.append(txt)
+
+            # Build final list interleaving adds/removals up to max_lines
+            summary_lines: list[str] = []
+            for add in additions:
+                summary_lines.append("🆕 " + add)
+                if len(summary_lines) >= max_lines:
+                    break
+            for rem in deletions:
+                if len(summary_lines) >= max_lines:
+                    break
+                summary_lines.append("🗑️ " + rem)
+
+            if len(summary_lines) < (len(additions) + len(deletions)):
+                summary_lines.append("… (truncated) …")
+
+            # Fallback
+            return "\n".join(summary_lines) if summary_lines else git_diff
 
         pretty = _summarise(diff_text)
 
