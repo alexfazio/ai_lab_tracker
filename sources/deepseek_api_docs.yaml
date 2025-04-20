@@ -2,7 +2,7 @@
 name: DeepSeek API Docs
 url: https://api-docs.deepseek.com/
 mode: GitDiff
-cadence: "0 */6 * * *"
+cadence: "0 * * * *"
 labels: [deepseek, docs]
 crawlOptions:
   allowBackwardLinks: false

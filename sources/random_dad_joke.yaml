@@ -1,0 +1,6 @@
+# sources/random_dad_joke.yaml
+name: Random Dad Joke
+url: https://icanhazdadjoke.com/
+mode: GitDiff
+labels: [test]
+cadence: "*/10 * * * *"

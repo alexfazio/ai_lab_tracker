@@ -2,7 +2,7 @@
 name: Anthropic Docs
 url: https://docs.anthropic.com/en/docs/
 mode: GitDiff
-cadence: "0 */6 * * *"
+cadence: "0 * * * *"
 labels: [anthropic, docs]
 crawlOptions:
   allowBackwardLinks: false

@@ -103,7 +103,7 @@ async def fetch(url: str, mode: str = "GitDiff") -> FirecrawlResult:
     payload = {
         "url": url_str,
         "formats": ["markdown", "changeTracking"],
-        "changeTrackingOptions": {"mode": mode}
+        "changeTrackingOptions": {"modes": [mode]}
     }
     # POST with retry on rate limit
     response = await _post_with_retry(f"{APP.api_url}{endpoint}", payload, headers)
@@ -130,11 +130,11 @@ async def crawl_and_fetch(
     # Build payload including optional crawlOptions
     payload: dict = {"url": url_str}
     if crawl_options:
-        payload.update(crawl_options.dict(by_alias=True, exclude_none=True))
+        payload.update(crawl_options.model_dump(by_alias=True, exclude_none=True))
     # Include changeTrackingOptions inside scrapeOptions
     payload["scrapeOptions"] = {
         "formats": ["markdown", "changeTracking"],
-        "changeTrackingOptions": {"mode": mode}
+        "changeTrackingOptions": {"modes": [mode]}
     }
 
     # POST with retry on rate limit
