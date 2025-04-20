@@ -37,7 +37,7 @@ async def run_once() -> None:
     send_logs = config.TELEGRAM_SEND_LOGS
     bot_token_env = config.TELEGRAM_BOT_TOKEN
     chat_ids_env = config.TELEGRAM_CHAT_IDS
-    if send_logs and bot_token_env and chat_ids_env:
+    if send_logs and bot_token_env and chat_ids_env and config.LOG_LEVEL < logging.INFO:
         try:
             bot = TelegramNotifier(bot_token_env, chat_ids_env).bot  # reuse Bot instance
             chat_ids = TelegramNotifier(bot_token_env, chat_ids_env).chat_ids

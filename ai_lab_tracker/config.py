@@ -53,4 +53,15 @@ LOG_LEVEL = {
     "INFO": 20,
     "DEBUG": 10,
     "NOTSET": 0,
-}.get(_lvl, 20) 
+}.get(_lvl, 20)
+
+# -----------------------------------------------------------------------------
+# Load .env early so that settings are present even during top‑level imports.
+# -----------------------------------------------------------------------------
+
+_ENV_PATH = Path(".env")
+if _ENV_PATH.exists():
+    for _line in _ENV_PATH.read_text().splitlines():
+        if _line.strip() and not _line.lstrip().startswith("#") and "=" in _line:
+            k, v = _line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip()) 
