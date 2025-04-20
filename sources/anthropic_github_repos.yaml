@@ -1,0 +1,7 @@
+# sources/anthropic_github_repos.yaml
+name: Anthropic GitHub Repos
+url: https://github.com/orgs/anthropics/repositories
+mode: GitDiff
+cadence: "0 * * * *"
+labels: [anthropic, github]
+enabled: true 

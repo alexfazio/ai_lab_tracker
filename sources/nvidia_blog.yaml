@@ -1,0 +1,7 @@
+# sources/nvidia_blog.yaml
+name: NVIDIA Developer Blog
+url: https://developer.nvidia.com/blog/
+mode: GitDiff
+cadence: "0 * * * *"  # hourly
+labels: [nvidia, blog]
+enabled: true 
