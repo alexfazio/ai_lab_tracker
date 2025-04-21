@@ -1,3 +1,10 @@
+<a href="https://x.com/alxfazio" target="_blank">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/firecrawl-devdocs-to-llm-cover.png">
+    <img alt="OpenAI Cookbook Logo" src="images/ai-lab-tracker-GitHub-banner.jpg" width="400px" style="max-width: 100%; margin-bottom: 20px;">
+  </picture>
+</a>
+
 # AI Lab Tracker
 
 A fully‑asynchronous Python 3.11 application that watches AI‑related websites, blogs and documentation pages, detects content changes with [Firecrawl Change‑Tracking](https://docs.firecrawl.dev/features/change-tracking), lets an [OpenAI Agent](https://openai.github.io/openai-agents-python/) decide whether the diff is **news‑worthy**, and then sends concise Telegram notifications.
