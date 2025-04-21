@@ -152,3 +152,8 @@ Desktop.ini
 .*.sw?
 *.swp
 .NFS*
+
+# State files
+.state/
+@docs_cursor.json
+@run_state.json
