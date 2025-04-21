@@ -206,7 +206,15 @@ class TelegramNotifier:
 
         title = source.name
         url = str(source.url)
-        message = f"⚡ *{title}*\n{url}\n\n{summary}"
+
+        # Trim diff to keep message <4096 chars
+        diff_snippet = diff_text
+        if len(diff_snippet) > 3500:
+            diff_snippet = diff_snippet[:3497] + "…"
+
+        message = (
+            f"⚡ *{title}*\n{url}\n\n{summary}\n\n```diff\n{diff_snippet}```"
+        )
         button = [[InlineKeyboardButton("View page", url=url)]]
         markup = InlineKeyboardMarkup(button)
 
