@@ -1,0 +1,6 @@
+name: Mistral AI News
+url: https://mistral.ai/news
+mode: GitDiff
+cadence: "*/30 * * * *"  # every 30 minutes
+labels: [mistral, news]
+enabled: true 

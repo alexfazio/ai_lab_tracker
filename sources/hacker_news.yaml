@@ -4,4 +4,4 @@ url: https://news.ycombinator.com/news
 mode: GitDiff
 cadence: "*/10 * * * *"
 labels: [test, news, hackernews]
-enabled: true 
+enabled: false 

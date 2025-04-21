@@ -1,0 +1,6 @@
+name: Qwen AI Blog
+url: https://qwenlm.github.io/blog/
+mode: GitDiff
+cadence: "*/30 * * * *"  # every 30 minutes
+labels: [qwen, blog]
+enabled: true 
