@@ -1,6 +1,8 @@
 pyproject.toml
 ai_lab_tracker/__init__.py
+ai_lab_tracker/agent_evaluator.py
 ai_lab_tracker/cli.py
+ai_lab_tracker/config.py
 ai_lab_tracker/dummy_notify.py
 ai_lab_tracker/firecrawl_adapter.py
 ai_lab_tracker/models.py

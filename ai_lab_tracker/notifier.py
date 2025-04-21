@@ -4,13 +4,12 @@ import asyncio
 import os
 from pathlib import Path
 from typing import List, Union, Optional
-import re
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import RetryAfter
 
 from .models import FirecrawlResult, SourceConfig
-from ai_lab_tracker import config  # local import to avoid cycle
+from ai_lab_tracker.agent_evaluator import evaluate_diff  # local import to avoid startup cost
 
 # =================================================================================================
 # ENVIRONMENT LOADING
@@ -81,140 +80,42 @@ class TelegramNotifier:
             # Nothing to send
             return
 
-        # ------------------------------------------------------------------
-        # Generate a one‑sentence summary via OpenAI if API key available
-        # ------------------------------------------------------------------
-
-        async def _openai_summary(diff_markdown: str) -> str | None:  # noqa: D401
-            """Return one‑sentence summary using OpenAI o4‑mini if configured."""
-            key = os.getenv("OPENAI_API_KEY", "")
-            if not key:
-                return None
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(api_key=key)
-            # Trim diff to reasonable length (o4‑mini context ~8k)
-            snippet = diff_markdown[:4000]
-            prompt = (
-                "You act as a change‑tracker for AI‑lab documentation & blogs. "
-                "Given a Git‑style diff, EXTRACT the concrete, user‑relevant changes. "
-                "Return up to THREE short bullet‑points (start each with •). "
-                "Each bullet should mention specific nouns/numbers: new model names, endpoint paths, parameters, dates, etc. "
-                "Omit boilerplate like 'the page was updated'. Concise, factual."
-            )
-            try:
-                response = await client.chat.completions.create(
-                    model=config.OPENAI_MODEL,
-                    messages=[
-                        {"role": "system", "content": prompt},
-                        {"role": "user", "content": snippet},
-                    ],
-                    max_tokens=120,
-                    temperature=0.2,
-                )
-                return response.choices[0].message.content.strip()
-            except Exception as exc:  # noqa: BLE001
-                # Log but fallback gracefully
-                import logging
-
-                logging.debug("OpenAI summary failed: %s", exc)
-                return None
-
-        # ------------------------------------------------------------------
-        # Local heuristic fallback summary builder
-        # ------------------------------------------------------------------
-        def _summarise(git_diff: str, max_lines: int = 20) -> str:
-            """Convert a Git‑diff into a short, human‑readable changelog.
-
-            We keep both added (🆕) and removed (🗑️) lines so the reader can see
-            what appeared and disappeared. Lines are cleaned to remove markdown
-            noise and truncated for brevity.
-            """
-
-            additions: list[str] = []
-            deletions: list[str] = []
-            noise_patterns = [
-                re.compile(r"your browser does not support", re.I),
-                re.compile(r"<iframe", re.I),
-                re.compile(r"!\[.*?\]\(.*?\)"),  # markdown image
-            ]
-
-            link_re = re.compile(r"\[([^\]]+)\]\([^\)]+\)")
-
-            def _markdown_to_text(text: str) -> str:
-                """Convert simple markdown links/images to plain text titles."""
-                # Strip images completely
-                text = re.sub(r"!\[[^\]]*\]\([^\)]*\)", "", text)
-                # Convert links: [title](url) -> title
-                return link_re.sub(r"\1", text)
-
-            def _clean(txt: str) -> str:
-                txt = _markdown_to_text(txt)
-                # Remove leftover URLs in parentheses
-                txt = re.sub(r"https?://[^ )]+", "", txt)
-                # Remove pipes and redundant symbols
-                txt = re.sub(r"\|", " ", txt)
-                # Collapse whitespace and punctuation spacing
-                txt = re.sub(r"\s+", " ", txt).strip(" -|\t")
-                # Compact date/time by removing redundant words like 'ago'
-                txt = re.sub(r"\b(ago|hide)\b", "", txt, flags=re.I)
-                txt = re.sub(r"\s+", " ", txt).strip()
-                # Truncate long lines
-                if len(txt) > 100:
-                    txt = txt[:97] + "…"
-                return txt
-
-            for line in git_diff.splitlines():
-                # Skip headers and context lines
-                if line.startswith(("+++", "---", "@@")):
-                    continue
-                if not line.startswith(("+", "-")):
-                    continue
-
-                txt = _clean(line[1:])
-                if not txt or any(p.search(txt) for p in noise_patterns):
-                    continue
-
-                if line.startswith("+"):
-                    additions.append(txt)
-                else:
-                    deletions.append(txt)
-
-            # Build final list interleaving adds/removals up to max_lines
-            summary_lines: list[str] = []
-            for add in additions:
-                summary_lines.append("🆕 " + add)
-                if len(summary_lines) >= max_lines:
-                    break
-            for rem in deletions:
-                if len(summary_lines) >= max_lines:
-                    break
-                summary_lines.append("🗑️ " + rem)
-
-            if len(summary_lines) < (len(additions) + len(deletions)):
-                summary_lines.append("… (truncated) …")
-
-            # Fallback
-            return "\n".join(summary_lines) if summary_lines else git_diff
-
-        summary = await _openai_summary(diff_text)
-        if not summary:
-            # Skip sending if LLM summary unavailable; log for debugging
+        # ---------------------------------------------------------------
+        # Use OpenAI Agent to decide relevance & generate summary
+        # ---------------------------------------------------------------
+        try:
+            agent_out = await evaluate_diff(diff_text)
+        except Exception as exc:  # noqa: BLE001
             import logging
+            logging.error("Agent evaluation failed for %s: %s", source.name, exc)
+            return  # mandatory agent – skip notification
 
-            logging.info("Skipping notification for %s – OpenAI summary unavailable", source.name)
+        if not agent_out.get("relevant"):
+            # Not news‑worthy; do not notify
             return
+
+        summary: str = agent_out.get("summary", "") or "(no summary)"
 
         title = source.name
         url = str(source.url)
 
-        # Trim diff to keep message <4096 chars
-        diff_snippet = diff_text
-        if len(diff_snippet) > 3500:
-            diff_snippet = diff_snippet[:3497] + "…"
+        # Dynamically trim diff so the final message fits Telegram's 4096‑char limit.
+        preamble = f"⚡ *{title}*\n{url}\n\n{summary}\n\n```diff\n"
+        footer = "```"
+        max_total = 4090  # small buffer below hard limit
 
-        message = (
-            f"⚡ *{title}*\n{url}\n\n{summary}\n\n```diff\n{diff_snippet}```"
-        )
+        remaining = max_total - len(preamble) - len(footer)
+        if remaining < 0:
+            # summary itself is too long → truncate aggressively
+            summary = summary[:300] + "…"
+            preamble = f"⚡ *{title}*\n{url}\n\n{summary}\n\n```diff\n"
+            remaining = max_total - len(preamble) - len(footer)
+
+        diff_snippet = diff_text
+        if len(diff_snippet) > remaining:
+            diff_snippet = diff_snippet[: remaining - 1] + "…"
+
+        message = preamble + diff_snippet + footer
         button = [[InlineKeyboardButton("View page", url=url)]]
         markup = InlineKeyboardMarkup(button)
 

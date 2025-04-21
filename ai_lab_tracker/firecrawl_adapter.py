@@ -42,18 +42,20 @@ class RateLimitExceeded(Exception):
     pass
 
 async def _enforce_rate_limit() -> None:
-    """Ensure no more than _RATE_LIMIT_PER_MINUTE calls occur per sliding WINDOW."""
-    now = monotonic()
-    # Remove timestamps outside the sliding window
-    while _call_timestamps and now - _call_timestamps[0] > _RATE_WINDOW:
-        _call_timestamps.popleft()
-    if len(_call_timestamps) >= _RATE_LIMIT_PER_MINUTE:
-        # Too many calls in window
-        raise RateLimitExceeded(
-            f"Exceeded { _RATE_LIMIT_PER_MINUTE } calls per { _RATE_WINDOW }s"
-        )
-    # Record this call's timestamp
-    _call_timestamps.append(now)
+    """Block until the request is allowed under the sliding‑window limit."""
+    while True:
+        now = monotonic()
+        # Discard old timestamps outside the window
+        while _call_timestamps and now - _call_timestamps[0] > _RATE_WINDOW:
+            _call_timestamps.popleft()
+
+        if len(_call_timestamps) < _RATE_LIMIT_PER_MINUTE:
+            _call_timestamps.append(now)
+            return  # allowed immediately
+
+        # Need to wait until the earliest call falls out of window
+        wait_time = _RATE_WINDOW - (now - _call_timestamps[0]) + 0.05
+        await asyncio.sleep(wait_time)
 
 # =================================================================================================
 # INTERNAL RATE REPLAY HELPER
@@ -68,8 +70,10 @@ async def _post_with_retry(url: str, payload: dict, headers: dict, max_retries: 
             await _enforce_rate_limit()
             return await APP._async_post_request(url, payload, headers)
         except RateLimitExceeded:
-            # Immediately bail out on client-side rate limiting
-            raise
+            # This branch should rarely happen now, but keep fallback
+            await asyncio.sleep(_RATE_WINDOW)
+            attempts += 1
+            continue
         except Exception as e:
             msg = str(e).lower()
             if attempts < max_retries and ('rate limit' in msg or 'retry after' in msg):
