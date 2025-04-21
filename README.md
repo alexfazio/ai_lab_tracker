@@ -40,8 +40,8 @@ pip install -e .
 ```env
 FIRECRAWL_API_KEY = fc‑********************************
 OPENAI_API_KEY    = sk‑********************************
-TELEGRAM_BOT_TOKEN= 123456:ABCdefGhIJKlmNoPQrstUvWXyz
-TELEGRAM_CHAT_IDS = -1001234567890  # comma‑separated for multiple chats
+TELEGRAM_BOT_TOKEN= ********************************
+TELEGRAM_CHAT_IDS = -***********  # comma‑separated for multiple chats
 # Optional
 LOG_LEVEL         = DEBUG           # DEBUG / INFO / WARNING / …
 TELEGRAM_SEND_LOGS= true            # forward logs to Telegram
