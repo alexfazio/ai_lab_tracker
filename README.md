@@ -1,7 +1,7 @@
 <a href="https://x.com/alxfazio" target="_blank">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="images/firecrawl-devdocs-to-llm-cover.png">
-    <img alt="OpenAI Cookbook Logo" src="images/ai-lab-tracker-GitHub-banner.jpg" width="400px" style="max-width: 100%; margin-bottom: 20px;">
+    <source media="(prefers-color-scheme: dark)" srcset="images/ai-lab-tracker-GitHub-banner.jpg">
+    <img alt="AI Lab Tracker Banner" src="images/ai-lab-tracker-GitHub-banner.jpg" width="400px" style="max-width: 100%; margin-bottom: 20px;">
   </picture>
 </a>
 
