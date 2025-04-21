@@ -197,7 +197,11 @@ class TelegramNotifier:
 
         summary = await _openai_summary(diff_text)
         if not summary:
-            summary = _summarise(diff_text)
+            # Skip sending if LLM summary unavailable; log for debugging
+            import logging
+
+            logging.info("Skipping notification for %s – OpenAI summary unavailable", source.name)
+            return
 
         title = source.name
         url = str(source.url)
