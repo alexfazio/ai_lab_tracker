@@ -10,6 +10,7 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import RetryAfter
 
 from .models import FirecrawlResult, SourceConfig
+from ai_lab_tracker import config  # local import to avoid cycle
 
 # =================================================================================================
 # ENVIRONMENT LOADING
@@ -102,7 +103,7 @@ class TelegramNotifier:
             )
             try:
                 response = await client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=config.OPENAI_MODEL,
                     messages=[
                         {"role": "system", "content": prompt},
                         {"role": "user", "content": snippet},

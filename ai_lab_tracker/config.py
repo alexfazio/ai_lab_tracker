@@ -34,6 +34,9 @@ TELEGRAM_SEND_LOGS: bool = os.getenv("TELEGRAM_SEND_LOGS", "false").lower() in {
 
 OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
 
+# Default OpenAI model for summaries
+OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4.1")
+
 # =================================================================================================
 # STATE DIRECTORY
 # =================================================================================================
