@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
+from rich.logging import RichHandler
 
 from .tracker import run_once
 
@@ -21,7 +22,13 @@ if env_path.exists():
 
 def main() -> None:
     """Console script entrypoint."""
-    logging.basicConfig(level=logging.INFO)
+    # Configure Rich logging handler for colorful console output
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(markup=True)]
+    )
     asyncio.run(run_once())
 
 if __name__ == "__main__":

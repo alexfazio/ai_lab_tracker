@@ -13,6 +13,7 @@ Environment variables (same as production):
 """
 
 from __future__ import annotations
+import logging
 
 import asyncio
 import os
@@ -62,8 +63,10 @@ async def main(send: bool, force: str | None = None) -> None:  # noqa: D401
             • "irrelevant" → monkey‑patch evaluator to always return irrelevant.
     """
 
+    # Configure logging for console output
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     if not send:
-        print("\nDummy‑notify: run with --send to push test messages to Telegram.\n")
+        logging.info("Dummy‑notify: run with --send to push test messages to Telegram.")
         return
 
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
